@@ -1,8 +1,8 @@
 using Alba;
 using Marten;
+using MartenWolverineChannels.IntegrationTests.TestSetup;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Npgsql;
 using Shouldly;
 using Wolverine;
 using Xunit.Abstractions;
@@ -22,18 +22,8 @@ public class When_persisting_an_event : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    var connectionString = new NpgsqlConnectionStringBuilder()
-    {
-      Pooling = false,
-      Port = 5435,
-      Host = "localhost",
-      CommandTimeout = 20,
-      Database = "postgres",
-      Password = "123456",
-      Username = "postgres"
-    }.ToString();
     _host = await Host.CreateDefaultBuilder()
-      .ConfigureServices(services => services.AddMarten(connectionString))
+      .ConfigureServices(services => services.AddMartenTestDb())
       .UseWolverine()
       .StartAlbaAsync();
 
