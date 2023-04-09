@@ -23,19 +23,19 @@ public static class TestServiceConfiguration
     services.AddMarten(connectionString);
     return services;
   }
+
+  public static IServiceCollection AddMartenEventListener(this IServiceCollection services) =>
+    services
+      .AddSingleton<MartenEventListener>()
+      .AddSingleton<IConfigureMarten, MartenEventListenerConfig>();
 }
 
 public class TestServices
 {
-  public IHostBuilder GetHostBuilder()
-  {
-    return Host.CreateDefaultBuilder()
-      .ConfigureServices(services =>
-      {
-        services.AddMartenTestDb();
-        services.AddSingleton<MartenEventListener>();
-        services.AddSingleton<IConfigureMarten, MartenEventListenerConfig>();
-      })
+  public IHostBuilder GetHostBuilder() =>
+    Host.CreateDefaultBuilder()
+      .ConfigureServices(services => services
+        .AddMartenTestDb()
+        .AddMartenEventListener())
       .UseWolverine();
-  }
 }
