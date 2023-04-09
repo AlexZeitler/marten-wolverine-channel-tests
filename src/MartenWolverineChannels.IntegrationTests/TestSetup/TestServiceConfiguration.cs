@@ -1,6 +1,8 @@
 using Marten;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Npgsql;
+using Wolverine;
 
 namespace MartenWolverineChannels.IntegrationTests.TestSetup;
 
@@ -20,5 +22,20 @@ public static class TestServiceConfiguration
     }.ToString();
     services.AddMarten(connectionString);
     return services;
+  }
+}
+
+public class TestServices
+{
+  public IHostBuilder GetHostBuilder()
+  {
+    return Host.CreateDefaultBuilder()
+      .ConfigureServices(services =>
+      {
+        services.AddMartenTestDb();
+        services.AddSingleton<MartenEventListener>();
+        services.AddSingleton<IConfigureMarten, MartenEventListenerConfig>();
+      })
+      .UseWolverine();
   }
 }
