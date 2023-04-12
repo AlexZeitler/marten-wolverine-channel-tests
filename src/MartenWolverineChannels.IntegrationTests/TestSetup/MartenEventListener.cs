@@ -110,36 +110,44 @@ public class MartenEventListener : IDocumentSessionListener
     CancellationToken? token = default
   )
   {
-    var cts = new CancellationTokenSource();
-    cts.CancelAfter(TimeSpan.FromSeconds(10));
-
-    var t = token ?? cts.Token;
-
-    await foreach (var ev in EventsReader.ReadAllAsync(t)
-                     .ConfigureAwait(false))
+    try
     {
-      if (ev.Data is not T data)
+      var cts = new CancellationTokenSource();
+      cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+      var t = token ?? cts.Token;
+
+      await foreach (var ev in EventsReader.ReadAllAsync(t)
+                       .ConfigureAwait(false))
       {
-        _logger.LogDebug(
-          "Event ${Event} for ${Predicate} not found. Waiting...",
-          ev.EventType,
-          predicate.Target
-        );
-        continue;
+        if (ev.Data is not T data)
+        {
+          _logger.LogDebug(
+            "Event ${Event} for ${Predicate} not found. Waiting...",
+            ev.EventType,
+            predicate.Target
+          );
+          continue;
+        }
+
+        if (predicate(data))
+        {
+          _logger.LogDebug(
+            "Event ${Event} for ${Predicate} found",
+            ev.EventType,
+            predicate
+          );
+          return;
+        }
       }
 
-      if (predicate(data))
-      {
-        _logger.LogDebug(
-          "Event ${Event} for ${Predicate} found",
-          ev.EventType,
-          predicate
-        );
-        return;
-      }
+      throw new Exception("No events were found.");
     }
-
-    throw new Exception("No events were found.");
+    catch (Exception e)
+    {
+      Console.WriteLine(e);
+      throw;
+    }
   }
 
   public async Task ForAsyncProjection<T>(
