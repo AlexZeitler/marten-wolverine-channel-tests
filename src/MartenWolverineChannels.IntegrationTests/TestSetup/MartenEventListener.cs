@@ -146,7 +146,6 @@ public class MartenEventListener : IDocumentSessionListener
     catch (Exception e)
     {
       Console.WriteLine(e);
-      throw;
     }
   }
 
