@@ -41,6 +41,7 @@ public class When_executing_an_async_command : IAsyncLifetime
 
     await listener.ForEvent<Registered>(e => e.Username == username);
 
+    await Task.Delay(5000);
     await using var session = _host.Services.GetService<IDocumentSession>();
     _events = await session.Events.FetchStreamAsync(userId);
   }
