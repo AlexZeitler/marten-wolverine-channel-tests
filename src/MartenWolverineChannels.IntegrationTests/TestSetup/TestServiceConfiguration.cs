@@ -1,25 +1,15 @@
 using Marten;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Npgsql;
 using Wolverine;
+using static MartenWolverineChannels.IntegrationTests.TestSetup.EventStoreHelpers;
 
 namespace MartenWolverineChannels.IntegrationTests.TestSetup;
 
 public static class TestServiceConfiguration
 {
-  public static IServiceCollection AddMartenTestDb(this IServiceCollection services)
+  public static IServiceCollection AddMartenTestDb(this IServiceCollection services, string connectionString)
   {
-    var connectionString = new NpgsqlConnectionStringBuilder
-    {
-      Pooling = false,
-      Port = 5435,
-      Host = "localhost",
-      CommandTimeout = 20,
-      Database = "postgres",
-      Password = "123456",
-      Username = "postgres"
-    }.ToString();
     services.AddMarten(connectionString);
     return services;
   }
@@ -32,10 +22,24 @@ public static class TestServiceConfiguration
 
 public class TestServices
 {
-  public IHostBuilder GetHostBuilder() =>
-    Host.CreateDefaultBuilder()
+  private readonly string _dbName;
+  private readonly PostgresAdministration _pgAdmin;
+
+  public TestServices()
+  {
+    _dbName = GetTestDbName();
+    _pgAdmin = new PostgresAdministration(GetTestConnectionString());
+  }
+  
+  public async Task<IHostBuilder> GetHostBuilder()
+  {
+    await _pgAdmin.CreateDatabase(_dbName);
+    var testConnectionString = GetTestConnectionString(_dbName);
+    
+    return Host.CreateDefaultBuilder()
       .ConfigureServices(services => services
-        .AddMartenTestDb()
+        .AddMartenTestDb(testConnectionString)
         .AddMartenEventListener())
       .UseWolverine();
+  }
 }

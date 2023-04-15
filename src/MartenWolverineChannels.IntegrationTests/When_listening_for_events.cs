@@ -37,10 +37,8 @@ public class When_listening_for_events : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    _host = await Host.CreateDefaultBuilder()
-      .ConfigureServices(services => services.AddMartenTestDb().AddMartenEventListener())
-      .UseWolverine()
-      .StartAlbaAsync();
+    _host = await (await new TestServices()
+      .GetHostBuilder()).StartAlbaAsync();
 
     var streamId = Guid.NewGuid();
 

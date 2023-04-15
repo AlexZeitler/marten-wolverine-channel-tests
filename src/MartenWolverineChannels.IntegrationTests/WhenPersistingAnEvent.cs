@@ -22,10 +22,8 @@ public class When_persisting_an_event : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    _host = await Host.CreateDefaultBuilder()
-      .ConfigureServices(services => services.AddMartenTestDb())
-      .UseWolverine()
-      .StartAlbaAsync();
+    _host = await (await new TestServices()
+        .GetHostBuilder()).StartAlbaAsync();
 
     var streamId = Guid.NewGuid();
     await using var session =

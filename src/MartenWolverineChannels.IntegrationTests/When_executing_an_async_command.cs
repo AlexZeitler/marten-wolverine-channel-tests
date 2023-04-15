@@ -2,6 +2,7 @@ using Alba;
 using Marten;
 using MartenWolverineChannels.IntegrationTests.TestSetup;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Shouldly;
 using Wolverine;
 using IEvent = Marten.Events.IEvent;
@@ -28,9 +29,8 @@ public class When_executing_an_async_command : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    _host = await new TestServices()
-      .GetHostBuilder()
-      .StartAlbaAsync();
+    _host = await (await new TestServices()
+      .GetHostBuilder()).StartAlbaAsync();
 
     var bus = _host.Services.GetService<IMessageBus>();
     var listener = _host.Services.GetService<MartenEventListener>();
