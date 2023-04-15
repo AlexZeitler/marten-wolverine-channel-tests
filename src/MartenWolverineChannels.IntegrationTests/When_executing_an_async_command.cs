@@ -2,7 +2,6 @@ using Alba;
 using Marten;
 using MartenWolverineChannels.IntegrationTests.TestSetup;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Shouldly;
 using Wolverine;
 using IEvent = Marten.Events.IEvent;
@@ -33,13 +32,13 @@ public class When_executing_an_async_command : IAsyncLifetime
       .GetHostBuilder()).StartAlbaAsync();
 
     var bus = _host.Services.GetService<IMessageBus>();
-    var listener = _host.Services.GetService<MartenEventListener>();
+    var listener = _host.Services.GetService<PollingMartenEventListener>();
 
     var userId = Guid.NewGuid();
     var username = $"johndoe-{userId}";
     await bus.PublishAsync(new Register(userId, username, "john@acme.inc"));
 
-    await listener.ForEvent<Registered>(e => e.Username == username);
+    await listener.WaitFor<Registered>(e => e.Username == username);
 
     await using var session = _host.Services.GetService<IDocumentSession>();
     _events = await session.Events.FetchStreamAsync(userId);

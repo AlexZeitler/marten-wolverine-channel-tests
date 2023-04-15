@@ -3,9 +3,7 @@ using JasperFx.Core;
 using Marten;
 using MartenWolverineChannels.IntegrationTests.TestSetup;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Shouldly;
-using Wolverine;
 using IEvent = Marten.Events.IEvent;
 
 namespace MartenWolverineChannels.IntegrationTests;
@@ -51,8 +49,8 @@ public class When_listening_for_events : IAsyncLifetime
     var bus = new Bus(store);
     bus.Publish(registered);
 
-    var listener = _host.Services.GetService<MartenEventListener>() ?? throw new InvalidOperationException();
-    await listener.ForEvent<Registered>(e => e.Username == username);
+    var listener = _host.Services.GetService<PollingMartenEventListener>() ?? throw new InvalidOperationException();
+    await listener.WaitFor<Registered>(e => e.Username == username);
 
     await using var session = store.OpenSession();
     _events = await session.Events.FetchStreamAsync(streamId);

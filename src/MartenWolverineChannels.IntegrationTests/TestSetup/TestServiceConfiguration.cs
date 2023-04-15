@@ -16,7 +16,7 @@ public static class TestServiceConfiguration
 
   public static IServiceCollection AddMartenEventListener(this IServiceCollection services) =>
     services
-      .AddSingleton<MartenEventListener>()
+      .AddSingleton<PollingMartenEventListener>()
       .AddSingleton<IConfigureMarten, MartenEventListenerConfig>();
 }
 

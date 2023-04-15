@@ -1,12 +1,93 @@
 using System.Threading.Channels;
 using Marten;
 using Marten.Events;
+using Marten.Events.Projections;
 using Marten.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MartenWolverineChannels.IntegrationTests.TestSetup;
+
+public class PollingMartenEventListener : IProjection, IChangeListener
+{
+  private readonly ILogger _logger;
+
+  public PollingMartenEventListener()
+  {
+    _logger = NullLogger.Instance;
+  }
+
+  public PollingMartenEventListener(
+    ILogger logger
+  )
+  {
+    _logger = logger;
+  }
+  
+  readonly List<IEvent> _events = new();
+
+  public void Apply(IDocumentOperations operations, IReadOnlyList<StreamAction> streams)
+  {
+    var events = streams.SelectMany(s => s.Events);
+    _events.AddRange(events);
+  }
+
+  public Task ApplyAsync(IDocumentOperations operations,
+    IReadOnlyList<StreamAction> streams,
+    CancellationToken cancellation)
+  {
+    Apply(operations, streams);
+
+    return Task.CompletedTask;
+  }
+
+  public Task AfterCommitAsync(IDocumentSession session,
+    IChangeSet commit,
+    CancellationToken token)
+  {
+    _events.AddRange(commit.GetEvents());
+
+    return Task.CompletedTask;
+  }
+
+  public Task WaitFor<T>(Func<T, bool> predicate, CancellationToken? token = default)
+  {
+    void Check(CancellationToken cancel)
+    {
+      var from = 0;
+
+      while (!cancel.IsCancellationRequested)
+      {
+        var upTo = _events.Count;
+
+        for (var index = from; index < upTo; index++)
+        {
+          var ev = _events[index];
+
+          if (typeof(T).IsAssignableFrom(ev.EventType) && predicate((T) ev.Data))
+          {
+            return;
+          }
+        }
+
+        from = upTo;
+
+        Thread.Sleep(200);
+      }
+
+      cancel.ThrowIfCancellationRequested();
+    }
+
+    var cts = new CancellationTokenSource();
+    cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+    var t = token ?? cts.Token;
+
+    return Task.Run(() => Check(t), t);
+  }
+}
+
 
 public class MartenEventListener : IDocumentSessionListener
 {
@@ -185,8 +266,8 @@ public class MartenEventListenerConfig : IConfigureMarten
     StoreOptions options
   )
   {
-    var listener = services.GetService<MartenEventListener>();
-    options.Listeners.Add(listener);
+    var listener = services.GetService<PollingMartenEventListener>();
+    options.Projections.Add(listener);
     options.Projections.AsyncListeners.Add(listener);
   }
 }
