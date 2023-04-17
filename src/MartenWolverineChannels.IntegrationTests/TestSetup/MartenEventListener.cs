@@ -1,7 +1,6 @@
 using System.Threading.Channels;
 using Marten;
 using Marten.Events;
-using Marten.Events.Projections;
 using Marten.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,14 +8,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MartenWolverineChannels.IntegrationTests.TestSetup;
 
-public class PollingMartenEventListener : IProjection, IChangeListener
+public class PollingMartenEventListener : IDocumentSessionListener
 {
   private readonly ILogger _logger;
-
-  public PollingMartenEventListener()
-  {
-    _logger = NullLogger.Instance;
-  }
+  readonly List<IEvent> _events = new();
 
   public PollingMartenEventListener(
     ILogger logger
@@ -24,49 +19,87 @@ public class PollingMartenEventListener : IProjection, IChangeListener
   {
     _logger = logger;
   }
-  
-  readonly List<IEvent> _events = new();
 
-  public void Apply(IDocumentOperations operations, IReadOnlyList<StreamAction> streams)
+  public PollingMartenEventListener()
   {
-    var events = streams.SelectMany(s => s.Events);
-    _events.AddRange(events);
+    _logger = NullLogger.Instance;
   }
 
-  public Task ApplyAsync(IDocumentOperations operations,
-    IReadOnlyList<StreamAction> streams,
-    CancellationToken cancellation)
-  {
-    Apply(operations, streams);
-
-    return Task.CompletedTask;
-  }
-
-  public Task AfterCommitAsync(IDocumentSession session,
+  public Task AfterCommitAsync(
+    IDocumentSession session,
     IChangeSet commit,
-    CancellationToken token)
+    CancellationToken token
+  )
   {
-    _events.AddRange(commit.GetEvents());
+    var events = commit.GetEvents();
+    _logger.LogInformation($"AfterCommitAsync Listener collected {events.Count()} events");
+    _events.AddRange(events);
 
     return Task.CompletedTask;
   }
 
-  public Task WaitFor<T>(Func<T, bool> predicate, CancellationToken? token = default)
+  public void BeforeSaveChanges(
+    IDocumentSession session
+  )
   {
-    void Check(CancellationToken cancel)
+  }
+
+  public Task BeforeSaveChangesAsync(
+    IDocumentSession session,
+    CancellationToken token
+  )
+  {
+    return Task.CompletedTask;
+  }
+
+  public void AfterCommit(
+    IDocumentSession session,
+    IChangeSet commit
+  )
+  {
+  }
+
+  public void DocumentLoaded(
+    object id,
+    object document
+  )
+  {
+  }
+
+  public void DocumentAddedForStorage(
+    object id,
+    object document
+  )
+  {
+  }
+
+  public Task WaitFor<T>(
+    Func<T, bool> predicate,
+    CancellationToken? token = default
+  )
+  {
+    _logger.LogInformation("Listener waiting for event");
+
+    void Check(
+      CancellationToken cancel
+    )
     {
       var from = 0;
+      var attempts = 1;
 
       while (!cancel.IsCancellationRequested)
       {
+        _logger.LogInformation($"Looking for expected event - attempt #{attempts}");
         var upTo = _events.Count;
 
         for (var index = from; index < upTo; index++)
         {
           var ev = _events[index];
 
-          if (typeof(T).IsAssignableFrom(ev.EventType) && predicate((T) ev.Data))
+          if (typeof(T).IsAssignableFrom(ev.EventType) && predicate((T)ev.Data))
           {
+            _logger.LogInformation("Listener found the event");
+            _logger.LogInformation($"Found Event stream id: {ev.StreamId}");
             return;
           }
         }
@@ -74,6 +107,7 @@ public class PollingMartenEventListener : IProjection, IChangeListener
         from = upTo;
 
         Thread.Sleep(200);
+        attempts++;
       }
 
       cancel.ThrowIfCancellationRequested();
@@ -87,7 +121,6 @@ public class PollingMartenEventListener : IProjection, IChangeListener
     return Task.Run(() => Check(t), t);
   }
 }
-
 
 public class MartenEventListener : IDocumentSessionListener
 {
@@ -175,7 +208,12 @@ public class MartenEventListener : IDocumentSessionListener
     CancellationToken cancellation
   )
   {
-    using (_logger.BeginScope(new Dictionary<string, object>() { ["Context"] = nameof(MartenEventListener) }))
+    using (_logger.BeginScope(
+             new Dictionary<string, object>()
+             {
+               ["Context"] = nameof(MartenEventListener)
+             }
+           ))
     {
       foreach (var @event in events)
       {
@@ -267,7 +305,7 @@ public class MartenEventListenerConfig : IConfigureMarten
   )
   {
     var listener = services.GetService<PollingMartenEventListener>();
-    options.Projections.Add(listener);
+    options.Listeners.Add(listener);
     options.Projections.AsyncListeners.Add(listener);
   }
 }

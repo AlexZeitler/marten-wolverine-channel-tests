@@ -2,9 +2,7 @@ using Alba;
 using Marten;
 using MartenWolverineChannels.IntegrationTests.TestSetup;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Shouldly;
-using Wolverine;
 using Xunit.Abstractions;
 using IEvent = Marten.Events.IEvent;
 
