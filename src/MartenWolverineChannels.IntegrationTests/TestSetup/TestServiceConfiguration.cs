@@ -1,4 +1,5 @@
 using Marten;
+using Marten.Events.Daemon.Resiliency;
 using Marten.Events.Projections;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,8 +24,8 @@ public static class TestServiceConfiguration
     services.AddMarten(options =>
     {
       options.Connection(connectionString);
-      options.Projections.SelfAggregate<User>(ProjectionLifecycle.Inline);
-    });
+      options.Projections.SelfAggregate<User>(ProjectionLifecycle.Async);
+    }).AddAsyncDaemon(DaemonMode.Solo);
     return services;
   }
 

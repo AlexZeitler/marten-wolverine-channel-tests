@@ -270,8 +270,7 @@ public class MartenEventListener : IDocumentSessionListener
     CancellationToken? token = default
   )
   {
-    try
-    {
+    
       var cts = new CancellationTokenSource();
       cts.CancelAfter(TimeSpan.FromSeconds(10));
 
@@ -302,11 +301,7 @@ public class MartenEventListener : IDocumentSessionListener
       }
 
       throw new Exception("No events were found.");
-    }
-    catch (Exception e)
-    {
-      Console.WriteLine(e);
-    }
+  
   }
 
   public async Task ForAsyncProjection<T>(
