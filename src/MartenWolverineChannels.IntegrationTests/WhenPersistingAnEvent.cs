@@ -15,12 +15,14 @@ public class When_persisting_an_event : IAsyncLifetime
   private readonly ITestOutputHelper _testOutputHelper;
   private IAlbaHost _host;
   private IReadOnlyList<IEvent> _events;
+  private TestServices _testServices;
 
   public When_persisting_an_event(ITestOutputHelper testOutputHelper) => _testOutputHelper = testOutputHelper;
 
   public async Task InitializeAsync()
   {
-    _host = await (await new TestServices()
+    _testServices = new TestServices();
+    _host = await (await _testServices
         .GetHostBuilder()).StartAlbaAsync();
 
     var streamId = Guid.NewGuid();
@@ -36,5 +38,9 @@ public class When_persisting_an_event : IAsyncLifetime
   [Fact]
   public void should_be_in_stream() => _events.Count.ShouldBe(1);
 
-  public async Task DisposeAsync() => await _host.DisposeAsync();
+  public async Task DisposeAsync()
+  {
+    await _host.DisposeAsync();
+    await _testServices.DropTestDatabase();
+  }
 }

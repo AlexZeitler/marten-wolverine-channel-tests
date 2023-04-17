@@ -47,6 +47,11 @@ public class TestServices
     _dbName = GetTestDbName();
     _pgAdmin = new PostgresAdministration(GetTestConnectionString());
   }
+  
+  public async Task DropTestDatabase()
+  {
+    await _pgAdmin.DropDatabase(_dbName);
+  }
 
   public async Task<IHostBuilder> GetHostBuilder(
     ITestOutputHelper? testOutputHelper = null

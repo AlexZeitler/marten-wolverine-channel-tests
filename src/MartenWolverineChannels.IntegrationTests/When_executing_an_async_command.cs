@@ -61,6 +61,7 @@ public class When_executing_an_async_command : IAsyncLifetime
   private IReadOnlyList<IEvent> _events;
   private ILogger? _logger;
   private User? _user;
+  private TestServices _testServices;
 
   public When_executing_an_async_command(
     ITestOutputHelper testOutputHelper
@@ -71,7 +72,8 @@ public class When_executing_an_async_command : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    _host = await (await new TestServices()
+    _testServices = new TestServices();
+    _host = await (await _testServices
       .GetHostBuilder(_testOutputHelper)).StartAlbaAsync();
 
     var bus = _host.Services.GetService<IMessageBus>();
@@ -117,5 +119,6 @@ public class When_executing_an_async_command : IAsyncLifetime
   {
     _logger.LogInformation("Disposing Host");
     await _host.DisposeAsync();
+    await _testServices.DropTestDatabase();
   }
 }

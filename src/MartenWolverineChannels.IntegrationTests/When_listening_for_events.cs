@@ -42,6 +42,7 @@ public class When_listening_for_events : IAsyncLifetime
   private readonly ITestOutputHelper _testOutputHelper;
   private IAlbaHost _host;
   private IReadOnlyList<IEvent> _events;
+  private TestServices _testServices;
 
   public When_listening_for_events(
     ITestOutputHelper testOutputHelper
@@ -52,7 +53,8 @@ public class When_listening_for_events : IAsyncLifetime
 
   public async Task InitializeAsync()
   {
-    _host = await (await new TestServices().GetHostBuilder(_testOutputHelper))
+    _testServices = new TestServices();
+    _host = await (await _testServices.GetHostBuilder(_testOutputHelper))
       .StartAlbaAsync();
 
     var streamId = Guid.NewGuid();
@@ -80,5 +82,9 @@ public class When_listening_for_events : IAsyncLifetime
   [Fact]
   public void should_capture_them() => _events.Count.ShouldBe(1);
 
-  public async Task DisposeAsync() => await _host.DisposeAsync();
+  public async Task DisposeAsync()
+  {
+    await _host.DisposeAsync();
+    await _testServices.DropTestDatabase();
+  }
 }
