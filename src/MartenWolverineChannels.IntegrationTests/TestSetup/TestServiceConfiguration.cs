@@ -1,4 +1,5 @@
 using Marten;
+using Marten.Events.Projections;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,11 @@ public static class TestServiceConfiguration
     string connectionString
   )
   {
-    services.AddMarten(connectionString);
+    services.AddMarten(options =>
+    {
+      options.Connection(connectionString);
+      options.Projections.SelfAggregate<User>(ProjectionLifecycle.Inline);
+    });
     return services;
   }
 

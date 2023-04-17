@@ -16,6 +16,24 @@ public record Register(
   string EMail
 );
 
+public class User
+{
+  public Guid Id { get; set; }
+  public string Username { get; set; }
+
+  public User(string username)
+  {
+    Username = username;
+  }
+
+  public static User Create(
+    Registered registered
+  )
+  {
+    return new User(registered.Username);
+  }
+}
+
 public class RegisterHandler
 {
   public async Task Handle(
@@ -42,6 +60,7 @@ public class When_executing_an_async_command : IAsyncLifetime
   private IAlbaHost _host;
   private IReadOnlyList<IEvent> _events;
   private ILogger? _logger;
+  private User? _user;
 
   public When_executing_an_async_command(
     ITestOutputHelper testOutputHelper
@@ -70,19 +89,28 @@ public class When_executing_an_async_command : IAsyncLifetime
     );
 
     _logger.LogInformation("Listener should now wait");
-    await listener.WaitForEvent<Registered>(e => e.Username == username);
+    // await listener.WaitForEvent<Registered>(e => e.Username == username);
+    await listener.WaitForProjection<User>(e => e.Username == username);
     _logger.LogInformation("Listener should have found the event (test must not fail now)");
 
     await using var session = _host.Services.GetService<IDocumentSession>();
     _logger.LogInformation($"Trying to fetch expected stream id {userId}");
     _events = await session.Events.FetchStreamAsync(userId);
+    _user = await session.LoadAsync<User>(userId);
   }
 
   [Fact]
   public void should_persist_event()
   {
-    _logger.LogInformation("Asserting");
+    _logger.LogInformation("Asserting Event");
     _events.Count.ShouldBe(1);
+  }
+
+  [Fact]
+  public void should_project_user()
+  {
+    _logger.LogInformation("Asserting Projection");
+    _user.ShouldNotBeNull();
   }
 
 

@@ -12,6 +12,7 @@ public class PollingMartenEventListener : IDocumentSessionListener
 {
   private readonly ILogger _logger;
   readonly List<IEvent> _events = new();
+  readonly List<object> _projections = new();
 
   public PollingMartenEventListener(
     ILogger logger
@@ -31,6 +32,7 @@ public class PollingMartenEventListener : IDocumentSessionListener
     CancellationToken token
   )
   {
+    _projections.AddRange(commit.Updated);
     var events = commit.GetEvents();
     _logger.LogInformation($"AfterCommitAsync Listener collected {events.Count()} events");
     _events.AddRange(events);
@@ -71,6 +73,45 @@ public class PollingMartenEventListener : IDocumentSessionListener
     object document
   )
   {
+  }
+
+  public Task WaitForProjection<T>(Func<T, bool> predicate, CancellationToken? token = default)
+  {
+    _logger.LogInformation($"Listener waiting for Projection {typeof(T)}");
+
+    void Check(CancellationToken token)
+    {
+      var from = 0;
+      var attempts = 1;
+      while (!token.IsCancellationRequested)
+      {
+        _logger.LogInformation($"Looking for expected projection - attempt #{attempts}");
+        var upTo = _projections.Count;
+
+        for (var index = from; index < upTo; index++)
+        {
+          var ev = _projections[index];
+
+          if (typeof(T) == ev.GetType() && predicate((T)ev))
+          {
+            _logger.LogInformation($"Listener Found Projection {typeof(T).Name} with Id: {((dynamic)ev).Id}");
+            return;
+          }
+        }
+
+        from = upTo;
+
+        Thread.Sleep(200);
+        attempts++;
+      }
+    }
+
+    var cts = new CancellationTokenSource();
+    cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+    var t = token ?? cts.Token;
+
+    return Task.Run(() => Check(t), t);
   }
 
   public Task WaitForEvent<T>(
