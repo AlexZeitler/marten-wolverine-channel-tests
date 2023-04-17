@@ -73,7 +73,7 @@ public class PollingMartenEventListener : IDocumentSessionListener
   {
   }
 
-  public Task WaitFor<T>(
+  public Task WaitForEvent<T>(
     Func<T, bool> predicate,
     CancellationToken? token = default
   )

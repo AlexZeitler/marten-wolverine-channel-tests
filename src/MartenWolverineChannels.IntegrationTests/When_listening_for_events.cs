@@ -71,7 +71,7 @@ public class When_listening_for_events : IAsyncLifetime
     bus.Publish(registered);
 
     var listener = _host.Services.GetService<PollingMartenEventListener>() ?? throw new InvalidOperationException();
-    await listener.WaitFor<Registered>(e => e.Username == username);
+    await listener.WaitForEvent<Registered>(e => e.Username == username);
 
     await using var session = store.OpenSession();
     _events = await session.Events.FetchStreamAsync(streamId);

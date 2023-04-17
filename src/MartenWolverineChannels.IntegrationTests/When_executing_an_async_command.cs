@@ -70,7 +70,7 @@ public class When_executing_an_async_command : IAsyncLifetime
     );
 
     _logger.LogInformation("Listener should now wait");
-    await listener.WaitFor<Registered>(e => e.Username == username);
+    await listener.WaitForEvent<Registered>(e => e.Username == username);
     _logger.LogInformation("Listener should have found the event (test must not fail now)");
 
     await using var session = _host.Services.GetService<IDocumentSession>();
